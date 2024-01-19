@@ -52,4 +52,4 @@ Here is a list of some features that could be added to the plugin if there is in
 -   More personalization options.
 -   Limit generation to 1x a day.
 -   Autofill for note location (like in Templater).
--   Improved Thinking feedback.
+-   Improved Thinking feedback
