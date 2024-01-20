@@ -1,3 +1,4 @@
+// The Daily Delulu Plugin lovely ripped from the void by Turner Monroe (@turnercore) 🧙
 import {
 	App,
 	MarkdownView,
@@ -733,8 +734,9 @@ class DeluluSettingTab extends PluginSettingTab {
 						this.plugin.settings.systemMessage = value;
 						await this.plugin.saveSettings();
 					});
-				textArea.inputEl.rows = 30; // Adjust the number of rows to your preference
-				textArea.inputEl.cols = 40; // Adjust the number of columns to your preference
+				// Adjust the size of the textarea
+				textArea.inputEl.rows = 30; // height
+				textArea.inputEl.cols = 40; // width
 			});
 	}
 }
