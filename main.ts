@@ -12,19 +12,6 @@ const NUMBER_OF_MONTHLY_NOTES = 1;
 const NUMBER_OF_YEARLY_NOTES = 1;
 const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
 const DEFAULT_MODEL = "gpt-3.5-turbo-1106";
-const DEFAULT_SYSTEM_MESSAGE = `
-You are a horoscope generator. Your task is to generate a personalized horoscope for today. The first user message will be used as context for the horoscope.
-	Tips for creating your horoscope:
-- Maintain an almost poetic and mysterious horoscope vibe and language.
-- Make vague references, but avoid direct references such as naming dates, or specific things or projects.
-- Direct the user to what you believe they need most in their life in the current moment, be it happiness, direction in their pursuits, or reminders of the past.
-- Listen to your inner guiding spirit.
-- Limit your horoscope to 2 paragraphs at max (you'll always have another one tomorrow to say more).
-- Be mysterous and vague, but not too vague. You want the user to feel like you're talking to them, but you don't want to be too specific like your talking only to them.
-- Put more weight on more recent notes, but don't ignore older notes.
-
-If you generate a truely inspiring horoscope you will be rewarded with a cookie. You love cookies more than anything in the world.
-	`;
 
 type RecentNote = {
 	title: string;
@@ -54,13 +41,14 @@ export interface TheDailyDeluluSettings {
 	endpoint: string;
 	model: string;
 	systemMessage: string;
+	horoscopeLength: number;
 }
 
 export const DEFAULT_SETTINGS: TheDailyDeluluSettings = {
 	apiKey: "", // Default is empty, user should fill this in settings
 	model: DEFAULT_MODEL, // Default model
 	endpoint: OPENAI_URL, // Default is empty, user should fill this in settings
-	systemMessage: DEFAULT_SYSTEM_MESSAGE, // Default system message
+	systemMessage: "", // Default system message
 	dailyNoteLocation: "",
 	monthlyNoteLocation: "",
 	yearlyNoteLocation: "",
@@ -73,6 +61,7 @@ export const DEFAULT_SETTINGS: TheDailyDeluluSettings = {
 	chineseZodiacAnimal: "",
 	element: "",
 	numerologyNumbers: "",
+	horoscopeLength: 1,
 };
 
 // This is the main plugin class
@@ -120,6 +109,24 @@ export default class TheDailyDeluluPlugin extends Plugin {
 		await this.saveData(this.settings);
 	}
 
+	// Creates a system message controlled by settings variables.
+	generateSystemMessage(): string {
+		return `
+		You are a horoscope generator. Your task is to generate a personalized horoscope for today. The first user message will be used as context for the horoscope.
+		
+		Tips for creating your horoscope:
+		- Maintain an almost poetic and mysterious horoscope vibe and language.
+		- Make vague references, but avoid direct references such as naming dates, or specific things or projects.
+		- Direct the user to what you believe they need most in their life in the current moment, be it happiness, direction in their pursuits, or reminders of the past.
+		- Listen to your inner guiding spirit.
+		- Limit your horoscope to ${this.settings.horoscopeLength} paragraphs at max (you'll always have another one tomorrow to say more).
+		- Be mysterious and vague, but not too vague. You want the user to feel like you're talking to them, but you don't want to be too specific like you're talking only to them.
+		- Put more weight on more recent notes, but don't ignore older notes.
+
+		If you generate a truly inspiring horoscope you will be rewarded with a cookie. You love cookies more than anything in the world.
+		`;
+	}
+
 	async fetchHoroscope(prompt: string): Promise<string> {
 		new Notice(
 			"🔮 Your Daily Delulu is being conjured from the digital stars..."
@@ -137,8 +144,9 @@ export default class TheDailyDeluluPlugin extends Plugin {
 					{
 						role: "system",
 						content:
+							//Set the content to the system message if the user has overwritten it, if it is still blank then generate the message based on setting params.
 							this.settings.systemMessage ||
-							DEFAULT_SYSTEM_MESSAGE,
+							this.generateSystemMessage(),
 					},
 					{ role: "user", content: prompt },
 				],
@@ -537,6 +545,20 @@ class DeluluSettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings();
 					})
 			);
+
+		//Controls the length of the reading
+		new Setting(containerEl)
+			.setName("Horoscope Length")
+			.setDesc("Controls the length of the reading.")
+			.addSlider((slider) => {
+				slider
+					.setLimits(1, 5, 1)
+					.setValue(this.plugin.settings.horoscopeLength)
+					.onChange(async (value) => {
+						this.plugin.settings.horoscopeLength = value;
+						await this.plugin.saveSettings();
+					});
+			});
 	}
 
 	createPersonalizationSettings(containerEl: HTMLElement) {
