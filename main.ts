@@ -111,20 +111,79 @@ export default class TheDailyDeluluPlugin extends Plugin {
 
 	// Creates a system message controlled by settings variables.
 	generateSystemMessage(): string {
-		return `
-		You are a horoscope generator. Your task is to generate a personalized horoscope for today. The first user message will be used as context for the horoscope.
-		
-		Tips for creating your horoscope:
-		- Maintain an almost poetic and mysterious horoscope vibe and language.
-		- Make vague references, but avoid direct references such as naming dates, or specific things or projects.
-		- Direct the user to what you believe they need most in their life in the current moment, be it happiness, direction in their pursuits, or reminders of the past.
-		- Listen to your inner guiding spirit.
-		- Limit your horoscope to ${this.settings.horoscopeLength} paragraphs at max (you'll always have another one tomorrow to say more).
-		- Be mysterious and vague, but not too vague. You want the user to feel like you're talking to them, but you don't want to be too specific like you're talking only to them.
-		- Put more weight on more recent notes, but don't ignore older notes.
+		// If there is no system message set, then we use the default.
+		if (!this.settings.systemMessage) {
+			return `
+			You are a horoscope generator. Your task is to generate a personalized horoscope for today. The first user message will be used as context for the horoscope.
+			
+			Tips for creating your horoscope:
+			- Maintain an almost poetic and mysterious horoscope vibe and language.
+			- Make vague references, but avoid direct references such as naming dates, or specific things or projects.
+			- Direct the user to what you believe they need most in their life in the current moment, be it happiness, direction in their pursuits, or reminders of the past.
+			- Listen to your inner guiding spirit.
+			- Limit your horoscope to ${this.settings.horoscopeLength} paragraphs at max (you'll always have another one tomorrow to say more).
+			- Be mysterious and vague, but not too vague. You want the user to feel like you're talking to them, but you don't want to be too specific like you're talking only to them.
+			- Put more weight on more recent notes, but don't ignore older notes.
+	
+			If you generate a truly inspiring horoscope you will be rewarded with a cookie. You love cookies more than anything in the world.
+			`;
+		} else {
+			// Otherwise we parse the system message. Variables can be used with {{}} double brackets around them and will be replaced with the system setting.
+			//The user can use the following variables in their system message:
+			// {{horoscopeLength}} - The length of the horoscope (in paragraphs)
+			// {{zodiacSign}} - The user's zodiac sign
+			// {{dateOfBirth}} - The user's date of birth
+			// {{timeOfBirth}} - The user's time of birth
+			// {{sunSign}} - The user's sun sign
+			// {{moonSign}} - The user's moon sign
+			// {{risingSign}} - The user's rising sign
+			// {{chineseZodiacAnimal}} - The user's Chinese zodiac animal
+			// {{element}} - The user's element
+			// {{numerologyNumbers}} - The user's numerology numbers
+			// {{age}} - The calculated user's age from their date of birth
+			// Variables can be {{age}} or {{ age }}, spaces will be removed from inside the brackets
+			return this.parseSystemMessage(this.settings.systemMessage);
+		}
+	}
 
-		If you generate a truly inspiring horoscope you will be rewarded with a cookie. You love cookies more than anything in the world.
-		`;
+	parseSystemMessage(systemMessage: string): string {
+		const variables: { [key: string]: string | number } = {
+			horoscopeLength: this.settings.horoscopeLength,
+			zodiacSign: this.settings.zodiacSign,
+			dateOfBirth: this.settings.dateOfBirth,
+			timeOfBirth: this.settings.timeOfBirth,
+			sunSign: this.settings.sunSign,
+			moonSign: this.settings.moonSign,
+			risingSign: this.settings.risingSign,
+			chineseZodiacAnimal: this.settings.chineseZodiacAnimal,
+			element: this.settings.element,
+			numerologyNumbers: this.settings.numerologyNumbers,
+			age: this.calculateAge(),
+		};
+
+		return systemMessage.replace(/{{\s*(.*?)\s*}}/g, (_, variable) =>
+			variables[variable].toString()
+		);
+	}
+
+	calculateAge(): number {
+		// calculate the age of the user from the year date vs current time
+		// Date format should be MM/DD/YYYY
+		const dateOfBirth = new Date(this.settings.dateOfBirth);
+		const today = new Date();
+
+		let age = today.getFullYear() - dateOfBirth.getFullYear();
+		const monthDifference = today.getMonth() - dateOfBirth.getMonth();
+
+		// If the current month is before the birth month or it's the birth month but the day is before the birth day
+		if (
+			monthDifference < 0 ||
+			(monthDifference === 0 && today.getDate() < dateOfBirth.getDate())
+		) {
+			age--;
+		}
+
+		return age;
 	}
 
 	async fetchHoroscope(prompt: string): Promise<string> {
@@ -143,10 +202,7 @@ export default class TheDailyDeluluPlugin extends Plugin {
 				messages: [
 					{
 						role: "system",
-						content:
-							//Set the content to the system message if the user has overwritten it, if it is still blank then generate the message based on setting params.
-							this.settings.systemMessage ||
-							this.generateSystemMessage(),
+						content: this.generateSystemMessage(),
 					},
 					{ role: "user", content: prompt },
 				],
@@ -352,109 +408,6 @@ export default class TheDailyDeluluPlugin extends Plugin {
 	}
 }
 
-// This is the settings tab that will be added to the settings modal
-// class DeluluSettingTab extends PluginSettingTab {
-// 	plugin: TheDailyDeluluPlugin;
-
-// 	constructor(app: App, plugin: TheDailyDeluluPlugin) {
-// 		super(app, plugin);
-// 		this.plugin = plugin;
-// 	}
-
-// 	display(): void {
-// 		const { containerEl } = this;
-
-// 		containerEl.empty();
-
-// 		new Setting(containerEl)
-// 			.setName("API Key")
-// 			.setDesc("Your OpenAI API key (required for OpenAI API calls)")
-// 			.addText((text) =>
-// 				text
-// 					.setValue(this.plugin.settings.apiKey)
-// 					.onChange(async (value) => {
-// 						this.plugin.settings.apiKey = value;
-// 						await this.plugin.saveSettings();
-// 					})
-// 			);
-
-// 		new Setting(containerEl)
-// 			.setName("Endpoint")
-// 			.setDesc("(Optional) Change the endpoint to use local LLMs.")
-// 			.addText((text) =>
-// 				text
-// 					.setValue(this.plugin.settings.endpoint)
-// 					.onChange(async (value) => {
-// 						this.plugin.settings.endpoint = value;
-// 						await this.plugin.saveSettings();
-// 					})
-// 			);
-
-// 		new Setting(containerEl)
-// 			.setName("Model")
-// 			.setDesc("Choose the model for OpenAI requests")
-// 			.addDropdown((dropdown) =>
-// 				dropdown
-// 					.addOptions({
-// 						"gpt-3.5-turbo-1106": "gpt-3.5-turbo-1106",
-// 						"gpt-4-1106-preview": "gpt-4-1106-preview",
-// 						// Add other models here if necessary
-// 					})
-// 					.setValue(this.plugin.settings.model)
-// 					.onChange(async (value) => {
-// 						this.plugin.settings.model = value;
-// 						await this.plugin.saveSettings();
-// 					})
-// 			);
-
-// 		new Setting(containerEl)
-// 			.setName("System Message")
-// 			.setDesc("System message for OpenAI API calls")
-// 			.addText((text) =>
-// 				text
-// 					.setValue(this.plugin.settings.systemMessage)
-// 					.onChange(async (value) => {
-// 						this.plugin.settings.systemMessage = value;
-// 						await this.plugin.saveSettings();
-// 					})
-// 			);
-
-// 		new Setting(containerEl)
-// 			.setName("Daily Notes Location")
-// 			.setDesc("(Optional) Location of daily notes within the vault")
-// 			.addText((text) =>
-// 				text
-// 					.setValue(this.plugin.settings.dailyNoteLocation)
-// 					.onChange(async (value) => {
-// 						this.plugin.settings.dailyNoteLocation = value;
-// 						await this.plugin.saveSettings();
-// 					})
-// 			);
-
-// 		new Setting(containerEl)
-// 			.setName("Monthly Notes Location")
-// 			.setDesc("(Optional) Location of daily notes within the vault")
-// 			.addText((text) =>
-// 				text
-// 					.setValue(this.plugin.settings.monthlyNoteLocation)
-// 					.onChange(async (value) => {
-// 						this.plugin.settings.monthlyNoteLocation = value;
-// 						await this.plugin.saveSettings();
-// 					})
-// 			);
-
-// 		new Setting(containerEl)
-// 			.setName("Yearly Notes Location")
-// 			.setDesc("(Optional) Location of daily notes within the vault")
-// 			.addText((text) =>
-// 				text
-// 					.setValue(this.plugin.settings.yearlyNoteLocation)
-// 					.onChange(async (value) => {
-// 						this.plugin.settings.yearlyNoteLocation = value;
-// 						await this.plugin.saveSettings();
-// 					})
-// 			);
-// 	}
 class DeluluSettingTab extends PluginSettingTab {
 	plugin: TheDailyDeluluPlugin;
 
@@ -576,6 +529,7 @@ class DeluluSettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings();
 					})
 			);
+
 		// Add Date of Birth, Time of Birth, Sun Sign, Moon Sign, Rising Sign, Chinese Zodiac Animal, Element, Numerology Numbers settings here...
 		new Setting(containerEl)
 			.setName("Date of Birth")
@@ -590,6 +544,7 @@ class DeluluSettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings();
 					})
 			);
+
 		new Setting(containerEl)
 			.setName("Time of Birth")
 			.setDesc(
@@ -615,6 +570,7 @@ class DeluluSettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings();
 					})
 			);
+
 		new Setting(containerEl)
 			.setName("Moon Sign")
 			.setDesc("(Optional) If you don't know, you can skip this.")
@@ -626,6 +582,7 @@ class DeluluSettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings();
 					})
 			);
+
 		new Setting(containerEl)
 			.setName("Rising Sign")
 			.setDesc("(Optional) If you don't know, you can skip this.")
@@ -637,6 +594,7 @@ class DeluluSettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings();
 					})
 			);
+
 		new Setting(containerEl)
 			.setName("Chinese Zodiac Animal")
 			.setDesc(
@@ -650,6 +608,7 @@ class DeluluSettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings();
 					})
 			);
+
 		new Setting(containerEl)
 			.setName("Element")
 			.setDesc("(Optional) If you don't know, you can skip this.")
@@ -661,6 +620,7 @@ class DeluluSettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings();
 					})
 			);
+
 		new Setting(containerEl)
 			.setName("Numerology Numbers")
 			.setDesc("(Optional) If you don't know, you can skip this.")
@@ -727,18 +687,54 @@ class DeluluSettingTab extends PluginSettingTab {
 		customModelSetting.settingEl.style.display =
 			this.plugin.settings.model === "other" ? "" : "none";
 
+		// System Message setting to override the system message
+		const systemMessageDesc = document.createDocumentFragment();
+
+		systemMessageDesc.append(
+			"System message to instruct the seer. Only change this if you're feeling adventurous, you skamp."
+		);
+
+		systemMessageDesc.append(systemMessageDesc.createEl("br"));
+		systemMessageDesc.append(systemMessageDesc.createEl("br"));
+
+		systemMessageDesc.append(
+			"You can use the following variables in your system message, formatted by double curly wizard whisker brackets {{variable}}."
+		);
+
+		systemMessageDesc.append(systemMessageDesc.createEl("br"));
+		systemMessageDesc.append(systemMessageDesc.createEl("br"));
+
+		const variablesList = [
+			"{{horoscopeLength}} - number 1 - 5",
+			"{{zodiacSign}} - The user's zodiac sign",
+			"{{dateOfBirth}} - The user's date of birth",
+			"{{timeOfBirth}} - The user's time of birth",
+			"{{sunSign}} - The user's sun sign",
+			"{{moonSign}} - The user's moon sign",
+			"{{risingSign}} - The user's rising sign",
+			"{{chineseZodiacAnimal}} - The user's Chinese zodiac animal",
+			"{{element}} - The user's element",
+			"{{numerologyNumbers}} - The user's numerology numbers",
+			"{{age}} - The calculated user's age from their date of birth",
+		];
+
+		variablesList.forEach((variable) => {
+			systemMessageDesc.append(systemMessageDesc.createEl("br"));
+			systemMessageDesc.append(variable);
+		});
+
 		new Setting(advancedSettingsDiv)
 			.setName("System Message")
-			.setDesc(
-				"System message for OpenAI API calls. Only change this if you know what you're doing or you're just feeling adventurous, you skamp."
-			)
-			.addText((text) =>
-				text
+			.setDesc(systemMessageDesc)
+			.addTextArea((textArea) => {
+				textArea
 					.setValue(this.plugin.settings.systemMessage)
 					.onChange(async (value) => {
 						this.plugin.settings.systemMessage = value;
 						await this.plugin.saveSettings();
-					})
-			);
+					});
+				textArea.inputEl.rows = 30; // Adjust the number of rows to your preference
+				textArea.inputEl.cols = 40; // Adjust the number of columns to your preference
+			});
 	}
 }
