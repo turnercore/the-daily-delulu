@@ -1,6 +1,7 @@
 // The Daily Delulu Plugin lovely ripped from the void by Turner Monroe (@turnercore) 🧙
 import {
 	App,
+	EditorPosition,
 	MarkdownView,
 	Notice,
 	Plugin,
@@ -83,6 +84,24 @@ export default class TheDailyDeluluPlugin extends Plugin {
 				this.fetchHoroscope(prompt)
 					.then((horoscope) => {
 						new Notice("🔮 Your Daily Delulu has arrived.");
+
+						const activeView =
+							this.app.workspace.getActiveViewOfType(
+								MarkdownView
+							);
+						if (!activeView || !this.cursorPosition) {
+							new Notice("Horoscope could not be inserted.");
+						} else {
+							// Replace the placeholder '🔮' with the actual horoscope text
+							activeView.editor.replaceRange(
+								horoscope,
+								this.cursorPosition,
+								{
+									line: this.cursorPosition.line,
+									ch: this.cursorPosition.ch + 1, // +1 to include the placeholder
+								}
+							);
+						}
 					})
 					.catch((error) => {
 						console.error("Error fetching horoscope:", error);
@@ -187,10 +206,27 @@ export default class TheDailyDeluluPlugin extends Plugin {
 		return age;
 	}
 
+	cursorPosition: EditorPosition | null = null;
+
 	async fetchHoroscope(prompt: string): Promise<string> {
 		new Notice(
 			"🔮 Your Daily Delulu is being conjured from the digital stars..."
 		);
+
+		const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+
+		if (!activeView) {
+			new Notice(
+				"Please place the cursor in a document where you want the horoscope."
+			);
+			return "";
+		}
+
+		// Save the cursor position
+		this.cursorPosition = activeView.editor.getCursor();
+
+		// Place the placeholder '🔮' where the cursor is
+		activeView.editor.replaceRange("🔮", this.cursorPosition);
 
 		const response = await fetch(this.settings.endpoint, {
 			method: "POST",
@@ -218,16 +254,7 @@ export default class TheDailyDeluluPlugin extends Plugin {
 			data.choices[0].message
 		) {
 			const horoscopeText = data.choices[0].message.content;
-			const activeView =
-				this.app.workspace.getActiveViewOfType(MarkdownView);
-			if (activeView) {
-				activeView.editor.replaceRange(
-					horoscopeText,
-					activeView.editor.getCursor()
-				);
-			} else {
-				new Notice("No where to put the horoscope!");
-			}
+
 			return horoscopeText;
 		} else {
 			throw new Error("Unexpected response structure from API");
