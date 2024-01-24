@@ -136,16 +136,18 @@ export default class TheDailyDeluluPlugin extends Plugin {
 			return `
 			You are a horoscope generator. Your task is to generate a personalized horoscope for today. The first user message will be used as context for the horoscope.
 			
+			Your horoscope should be creative and thought provoking, helpful to the user's life and relevant to their unique situation. 
+			
+			THE HOROSCOPE MUST BE ${this.settings.horoscopeLength} paragraphs or LESS!!
+
 			Tips for creating your horoscope:
 			- Maintain an almost poetic and mysterious horoscope vibe and language.
 			- Make vague references, but avoid direct references such as naming dates, or specific things or projects.
 			- Direct the user to what you believe they need most in their life in the current moment, be it happiness, direction in their pursuits, or reminders of the past.
 			- Listen to your inner guiding spirit.
-			- Limit your horoscope to ${this.settings.horoscopeLength} paragraphs at max (you'll always have another one tomorrow to say more).
 			- Be mysterious and vague, but not too vague. You want the user to feel like you're talking to them, but you don't want to be too specific like you're talking only to them.
 			- Put more weight on more recent notes, but don't ignore older notes.
-	
-			If you generate a truly inspiring horoscope you will be rewarded with a cookie. You love cookies more than anything in the world.
+			- Limit your horoscope to ${this.settings.horoscopeLength} paragraphs at max (you'll always have another one tomorrow to say more).
 			`;
 		} else {
 			// Otherwise we parse the system message. Variables can be used with {{}} double brackets around them and will be replaced with the system setting.
@@ -209,6 +211,11 @@ export default class TheDailyDeluluPlugin extends Plugin {
 	cursorPosition: EditorPosition | null = null;
 
 	async fetchHoroscope(prompt: string): Promise<string> {
+		// Console log the input message being used
+		console.log("prompt", this.generateSystemMessage());
+		// Log model used
+		console.log("model", this.settings.model);
+
 		new Notice(
 			"🔮 Your Daily Delulu is being conjured from the digital stars..."
 		);
