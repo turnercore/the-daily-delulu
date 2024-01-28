@@ -12,7 +12,8 @@
 				"GitHub.copilot-chat"
 			]
 		}
-	}
+	},
+	"postCreateCommand": "npm install"
 
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	// "features": {},
