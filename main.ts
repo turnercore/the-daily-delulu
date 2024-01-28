@@ -3,6 +3,7 @@ import {
 	App,
 	EditorPosition,
 	MarkdownView,
+	Modal,
 	Notice,
 	Plugin,
 	PluginSettingTab,
@@ -451,6 +452,7 @@ class DeluluSettingTab extends PluginSettingTab {
 		this.plugin = plugin;
 	}
 
+	// Display the settings
 	display(): void {
 		const { containerEl } = this;
 		containerEl.empty();
@@ -468,19 +470,18 @@ class DeluluSettingTab extends PluginSettingTab {
 		containerEl.createEl("h3", {
 			text: "Behind the Veil",
 		});
+
 		new Setting(containerEl)
-			.setName("Show Advanced Settings")
-			.setDesc("Toggle to show or hide advanced settings.")
-			.addToggle((toggle) =>
-				toggle.onChange((value) => {
-					advancedSettingsDiv.style.display = value ? "" : "none";
+			.setName("Advanced Settings")
+			.setDesc("Open the advanced settings")
+			.addButton((button) =>
+				button.setButtonText("Open").onClick(() => {
+					new AdvancedSettingsModal(this.app, this.plugin).open();
 				})
 			);
-		const advancedSettingsDiv = containerEl.createDiv("advanced-settings");
-
-		advancedSettingsDiv.style.display = "none"; // Hide by default)
-		this.createAdvancedSettings(advancedSettingsDiv); // Populate advanced settings
 	}
+
+	// Code for actually creating the settings
 	createAPIKeySetting(containerEl: HTMLElement) {
 		// API Key Setting
 		new Setting(containerEl)
@@ -668,11 +669,18 @@ class DeluluSettingTab extends PluginSettingTab {
 					})
 			);
 	}
+}
 
-	createAdvancedSettings(containerEl: HTMLElement) {
-		// Endpoint, Model, System Message Settings
-		const advancedSettingsDiv = containerEl.createDiv("advanced-settings");
+class AdvancedSettingsModal extends Modal {
+	constructor(app: App, private plugin: TheDailyDeluluPlugin) {
+		super(app);
+	}
 
+	onOpen() {
+		const { contentEl } = this;
+		const advancedSettingsDiv = contentEl.createDiv("advanced-settings");
+
+		// Endpoint setting
 		new Setting(advancedSettingsDiv)
 			.setName("Endpoint")
 			.setDesc("(Optional) Change the endpoint to use local LLMs.")
@@ -686,6 +694,18 @@ class DeluluSettingTab extends PluginSettingTab {
 			);
 
 		// Model dropdown setting
+		const customModelSetting = new Setting(advancedSettingsDiv)
+			.setName("Custom Model")
+			.setDesc("Enter the model string for local LLM requests.")
+			.addText((text) =>
+				text
+					.setValue(this.plugin.settings.model)
+					.onChange(async (value) => {
+						this.plugin.settings.model = value;
+						await this.plugin.saveSettings();
+					})
+			);
+
 		new Setting(advancedSettingsDiv)
 			.setName("Model")
 			.setDesc("Choose the model for OpenAI requests")
@@ -705,19 +725,6 @@ class DeluluSettingTab extends PluginSettingTab {
 					})
 			);
 
-		// Custom Model setting (hidden initially)
-		const customModelSetting = new Setting(advancedSettingsDiv)
-			.setName("Custom Model")
-			.setDesc("Enter the model string for local LLM requests.")
-			.addText((text) =>
-				text
-					.setValue(this.plugin.settings.model)
-					.onChange(async (value) => {
-						this.plugin.settings.model = value;
-						await this.plugin.saveSettings();
-					})
-			);
-
 		// Initially hide the Custom Model setting if the selected model is not 'other'
 		customModelSetting.settingEl.style.display =
 			this.plugin.settings.model === "other" ? "" : "none";
@@ -733,24 +740,24 @@ class DeluluSettingTab extends PluginSettingTab {
 		systemMessageDesc.append(systemMessageDesc.createEl("br"));
 
 		systemMessageDesc.append(
-			"You can use the following variables in your system message, formatted by double curly wizard whisker brackets {{variable}}."
+			"You can use the following variables in your system message:"
 		);
 
 		systemMessageDesc.append(systemMessageDesc.createEl("br"));
 		systemMessageDesc.append(systemMessageDesc.createEl("br"));
 
 		const variablesList = [
-			"{{horoscopeLength}} - number 1 - 5",
-			"{{zodiacSign}} - The user's zodiac sign",
-			"{{dateOfBirth}} - The user's date of birth",
-			"{{timeOfBirth}} - The user's time of birth",
-			"{{sunSign}} - The user's sun sign",
-			"{{moonSign}} - The user's moon sign",
-			"{{risingSign}} - The user's rising sign",
-			"{{chineseZodiacAnimal}} - The user's Chinese zodiac animal",
-			"{{element}} - The user's element",
-			"{{numerologyNumbers}} - The user's numerology numbers",
-			"{{age}} - The calculated user's age from their date of birth",
+			"{{horoscopeLength}}",
+			"{{zodiacSign}}",
+			"{{dateOfBirth}}",
+			"{{timeOfBirth}}",
+			"{{sunSign}}",
+			"{{moonSign}}",
+			"{{risingSign}}",
+			"{{chineseZodiacAnimal}}",
+			"{{element}}",
+			"{{numerologyNumbers}}",
+			"{{age}}",
 		];
 
 		variablesList.forEach((variable) => {
@@ -772,5 +779,10 @@ class DeluluSettingTab extends PluginSettingTab {
 				textArea.inputEl.rows = 30; // height
 				textArea.inputEl.cols = 40; // width
 			});
+	}
+
+	onClose() {
+		const { contentEl } = this;
+		contentEl.empty();
 	}
 }
